@@ -1,0 +1,56 @@
+<html>
+<head>
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.21/angular.min.js" ></script>
+	<script type="text/javascript" src="./GameOfLife.js"></script>
+</head>
+
+<body ng-app ng-controller="gameCtrl">
+
+<pre style="line-height: 0.6em;font-size: 4em;" ng-bind-html="game">
+
+</pre>
+<script type="text/javascript">
+	function gameCtrl($scope, $timeout, $sce){
+		
+		var fun = 	    "........\n"+
+						"..***...\n"+
+						"...***..\n"+
+						"........\n"+
+						"....*...\n"+
+						"...*....\n"+
+						"..**....\n"+
+						"........\n"
+
+		var unlimited = "........................*...........\n"+
+						"......................*.*...........\n"+
+						"............**......**............**\n"+
+						"...........*...*....**............**\n"+
+						"**........*.....*...**..............\n"+
+						"**........*...*.**....*.*...........\n"+
+						"..........*.....*.......*...........\n"+
+						"...........*...*....................\n"+
+						"............**......................\n"+
+						"....................................\n"+
+						"....................................\n"+
+						"....................................\n"+
+						"....................................\n"+
+						"....................................\n"+
+						"....................................\n"
+						
+	
+		var game = new GameOfLife(15, 36, unlimited);
+		
+		function play(){
+			$timeout(function(){
+				var newg = game.getNextGeneration();
+				game = new GameOfLife(15,36, newg);
+				$scope.game = $sce.trustAsHtml(newg.replace(/\*/g,'&#9632;').replace(/\./g,'&#9633;'));
+				play();
+			}, 100);
+		}
+		
+		play();
+	}
+</script>
+</body>
+</html>
