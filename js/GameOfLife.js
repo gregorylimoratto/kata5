@@ -3,13 +3,14 @@
 	var gameOfLife = function(nbRows, nbCols, gridStr){
 		this.nbRows = nbRows;
 		this.nbCols = nbCols;
-		this.grid = [];
+		this.grid = {};
 		var lines = gridStr.split(/\r?\n/g);
-		for (var i=0; i<lines.length; i++){
+		for (var i=0; i<nbRows; i++){
 			if (lines[i].length > 0){
-				this.grid.push([]);
-				for(var j=0; j<lines[i].length; j++){
-					this.grid[i].push(lines[i][j]);
+				for(var j=0; j<nbCols; j++){
+					if (lines[i][j] === '*'){
+						this.grid[j + "," + i] = '*';
+					}
 				}
 			}
 		}
@@ -19,7 +20,7 @@
 	{
 		if (x >= 0 && y >=0 && x < game.nbCols && y < game.nbRows)
 		{
-			return game.grid[y][x] === '*';
+			return game.grid[x + ',' + y] === '*';
 		}
 		return false;
 	}
@@ -37,20 +38,37 @@
 		return nbCellsAlive;
 	};
 	
+	gameOfLife.prototype.hasAliveCell = function(x, y){
+		return hasAliveCell(this,x,y);
+	}
+	
 	gameOfLife.prototype.getNextGenCell = function(x, y){
 		var nbNeighbourCellsAlive = this.getNbAliveCells(x, y);
-		if (nbNeighbourCellsAlive < 2 && this.grid[y][x] === '*') return '.';
-		if ((nbNeighbourCellsAlive === 2 || nbNeighbourCellsAlive === 3) && this.grid[y][x] === '*') return '*';
-		if (nbNeighbourCellsAlive === 3 && this.grid[y][x] === '.') return '*';
-		if (nbNeighbourCellsAlive > 3 && this.grid[y][x] === '*') return '.';
-		return this.grid[y][x];
+		if (nbNeighbourCellsAlive > 3) return '.';
+		if (nbNeighbourCellsAlive < 2 && hasAliveCell(this, x, y)) return '.';
+		if ((nbNeighbourCellsAlive === 2 || nbNeighbourCellsAlive === 3) && hasAliveCell(this, x, y)) return '*';
+		if (nbNeighbourCellsAlive === 3 && !hasAliveCell(this, x, y)) return '*';
+		return hasAliveCell(this, x, y) ? '*' : '.';
+	}
+	
+	gameOfLife.prototype.generateNextGeneration = function(){
+		var grid = {};
+		for (var i=0; i<this.nbRows; i++){
+			for(var j=0; j<this.nbCols; j++){
+				if (this.getNextGenCell(j,i) === '*') {
+					grid[j + "," + i] = '*';
+				}
+			}
+		}
+		this.grid = grid;
 	}
 	
 	gameOfLife.prototype.getNextGeneration = function(){
+		this.generateNextGeneration();
 		var grid = "";
-		for (var i=0; i<this.grid.length; i++){
-			for(var j=0; j<this.grid[i].length; j++){
-				grid+=this.getNextGenCell(j,i);
+		for (var i=0; i<this.nbRows; i++){
+			for(var j=0; j<this.nbCols; j++){
+				grid+=this.hasAliveCell(j,i) ? '*' : '.';
 			}
 			grid+="\n";
 		}

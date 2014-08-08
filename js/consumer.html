@@ -2,26 +2,28 @@
 <head>
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.21/angular.min.js" ></script>
 	<script type="text/javascript" src="./GameOfLife.js"></script>
+	<script type="text/javascript" src="http://threejs.org/build/three.min.js"></script>
+	<script type="text/javascript" src="http://threejs.org/examples/js/Detector.js"></script>
 </head>
 
-<body ng-app ng-controller="gameCtrl">
-
-<pre style="line-height: 0.6em;font-size: 4em;" ng-bind-html="game">
+<body ng-app="GameOfLife" ng-controller="gameCtrl">
+stop à l'iteration : <input type="text" ng-model="stop"/> itération en cours: {{iteration}}
+<pre style="line-height: 0.6em;font-size: 1em;" ng-bind-html="gameHtml">
 
 </pre>
-<script type="text/javascript">
-	function gameCtrl($scope, $timeout, $sce){
-		
-		var fun = 	    "........\n"+
-						"..***...\n"+
-						"...***..\n"+
-						"........\n"+
-						"....*...\n"+
-						"...*....\n"+
-						"..**....\n"+
-						"........\n"
 
-		var unlimited = "........................*...........\n"+
+<div d-display="game"></div>
+
+
+<div>
+	<input ng-model="nbRows" /><input ng-model="nbCols" /><button ng-click="init()">reinit</button><br/>
+	<textarea style="min-width:350px;min-height:350px" ng-model="initialState"></textarea>
+	<button ng-click="reload()">Lancer un nouveau jeu</button>
+</div>
+
+<script type="text/javascript">
+
+var unlimited = 		"........................*...........\n"+
 						"......................*.*...........\n"+
 						"............**......**............**\n"+
 						"...........*...*....**............**\n"+
@@ -35,22 +37,133 @@
 						"....................................\n"+
 						"....................................\n"+
 						"....................................\n"+
-						"....................................\n"
-						
+						"....................................\n";
+
+angular.module('GameOfLife', []).controller('gameCtrl', function ($scope, $timeout, $sce){
+	$scope.nbRows = 15;
+	$scope.nbCols = 36;
+	$scope.initialState = unlimited;
 	
-		var game = new GameOfLife(15, 36, unlimited);
-		
-		function play(){
-			$timeout(function(){
-				var newg = game.getNextGeneration();
-				game = new GameOfLife(15,36, newg);
-				$scope.game = $sce.trustAsHtml(newg.replace(/\*/g,'&#9632;').replace(/\./g,'&#9633;'));
+	var iteration = 1;
+	$scope.stop = 110;
+	var inprogress = true;
+	function play(){
+		$timeout(function(){
+			$scope.iteration = iteration;
+			var newg = $scope.game.getNextGeneration();
+			$scope.game = new GameOfLife($scope.game.nbRows,$scope.game.nbCols, newg);
+			$scope.gameHtml = $sce.trustAsHtml(newg.replace(/\*/g,'&#9632;').replace(/\./g,'&#9633;'));
+			
+			if (iteration !=  parseInt($scope.stop)){
 				play();
-			}, 100);
-		}
-		
-		play();
+			}else{
+				inprogress = false;
+			}
+			
+			iteration++;
+		}, 100);
 	}
+	
+	$scope.init = function(){
+		$scope.initialState = "";
+		for(var i=0; i<$scope.nbRows; i++){
+			for(var j=0; j<$scope.nbCols; j++){
+				$scope.initialState += '.';
+			}
+			$scope.initialState += '\n';
+		}
+	}
+	
+	$scope.reload = function(){
+		$scope.game = new GameOfLife(parseInt($scope.nbRows), parseInt($scope.nbCols), $scope.initialState);
+		if (!inprogress){
+			play();
+		}
+		iteration=1;
+	}
+	$scope.reload();
+	play();
+})
+.directive('dDisplay', function(){
+	return {
+		scope: {
+			"dDisplay":'='
+		},
+		link : function($scope, element){
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			var container, stats;
+			var camera, scene, renderer;
+			var taille = 7;
+			var geometry = new THREE.BoxGeometry( taille, taille, taille );
+			
+			camera = new THREE.PerspectiveCamera( 20, 1, 1, 2000 );
+			camera.position.y = 400;
+
+			scene = new THREE.Scene();
+
+			var material = new THREE.MeshBasicMaterial( { vertexColors: THREE.FaceColors, overdraw: 0.5 } );
+			
+			for ( var i = 0; i < geometry.faces.length; i += 2 ) {
+				var hex = Math.random() * 0xffffff;
+				geometry.faces[ i ].color.setHex( hex );
+				geometry.faces[ i + 1 ].color.setHex( hex );
+			}
+			
+			var getCube = function(){
+				var newcube = new THREE.BoxGeometry( taille, taille, taille );
+				newcube.faces = geometry.faces;
+				return newcube;
+			};
+		
+
+			renderer = new THREE.WebGLRenderer( { antialias: true } );
+			renderer.setSize( 400, 400 );
+			element[0].appendChild( renderer.domElement );
+			
+			var iteration = 0;
+			var items = {};
+			$scope.$watch('dDisplay', function(game){
+				if (iteration == 1){
+					iteration = 0;
+				}
+				
+				if (items[""+iteration]){
+					for (var it=0; it< items[""+iteration].length; it++){
+						scene.remove(items[""+iteration][it]);
+					}
+				}
+				items[""+iteration] = [];
+			
+				for (var y=0; y<game.nbRows; y++){
+					for (var x=0; x<game.nbCols; x++){
+						if (game.hasAliveCell(x,y)){
+							cube = new THREE.Mesh( getCube(), material );
+							cube.position.x = -200 + x * taille;
+							cube.position.y = 100 - y * taille;
+							cube.position.z = iteration * taille;
+							items[""+iteration].push(cube);
+							scene.add( cube );
+						}
+					}
+				}
+				iteration++;	
+				
+			});
+			
+			setInterval(function(){render()}, 10);
+			
+			function render() {
+				var timer = Date.now() * 0.0002;
+
+				camera.position.x = Math.cos( timer ) * 1000;
+				camera.position.z = Math.sin( timer ) * 1000;
+
+				camera.lookAt( scene.position );
+				renderer.render( scene, camera );
+			}
+		}
+	}
+});
 </script>
 </body>
 </html>
