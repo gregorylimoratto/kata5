@@ -46,15 +46,17 @@ angular.module('GameOfLife', []).controller('gameCtrl', function ($scope, $timeo
 	
 	var iteration = 1;
 	$scope.stop = 110;
+	var stop = $scope.stop;
 	var inprogress = true;
 	function play(){
+		inprogress = true;
 		$timeout(function(){
 			$scope.iteration = iteration;
 			var newg = $scope.game.getNextGeneration();
 			$scope.game = new GameOfLife($scope.game.nbRows,$scope.game.nbCols, newg);
 			$scope.gameHtml = $sce.trustAsHtml(newg.replace(/\*/g,'&#9632;').replace(/\./g,'&#9633;'));
 			
-			if (iteration !=  parseInt($scope.stop)){
+			if (iteration !=  parseInt(stop)){
 				play();
 			}else{
 				inprogress = false;
@@ -76,11 +78,13 @@ angular.module('GameOfLife', []).controller('gameCtrl', function ($scope, $timeo
 	
 	$scope.reload = function(){
 		$scope.game = new GameOfLife(parseInt($scope.nbRows), parseInt($scope.nbCols), $scope.initialState);
+		stop = $scope.stop;
 		if (!inprogress){
 			play();
 		}
 		iteration=1;
 	}
+	
 	$scope.reload();
 	play();
 })
